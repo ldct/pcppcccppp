@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
-def add(a:str, b):
-	return a + b
+def add(a:int, b:int)->int:
+  ret = a + b # type: int
+  return ret
 
 K = input()
 print(K)

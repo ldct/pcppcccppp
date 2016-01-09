@@ -1,26 +1,59 @@
 #!/usr/bin/env python3
 
-import ast
+import sys, ast
 
 def cppFromA(a):
     if isinstance(a, ast.Module):
         return cppFromModule(a)
-    if isinstance(a, ast.Import):
+    elif isinstance(a, ast.Import):
         return 'import' + str(a)
-    if isinstance(a, ast.Assign):
+    elif isinstance(a, ast.Assign):
         return cppFromAssign(a)
-    if isinstance(a, ast.Expr):
+    elif isinstance(a, ast.Expr):
         return cppFromExpr(a)
-    if isinstance(a, ast.Name):
+    elif isinstance(a, ast.Name):
         return a.id
-    if isinstance(a, ast.FunctionDef):
+    elif isinstance(a, ast.FunctionDef):
         return cppFromFuncdef(a)
-
+    elif isinstance(a, ast.Return):
+        return cppFromReturn(a)
+    elif isinstance(a, ast.Call):
+        return cppFromCall(a)
+    elif isinstance(a, ast.BinOp):
+        return cppFromA(a.left) + " + " + cppFromA(a.right)
     else:
-        return 'unknown: ' + str(a);
+        return 'unknown: ' + str(a) + ast.dump(a)
+
+def cppFromReturn(ret):
+    return "return " + cppFromA(ret.value) + ";"
+
+def cppFromCall(call):
+    if call.func.id == 'print':
+        return cppFromPrint(call.args)
+    else:
+        return "cppFromCall"
+
+
+def cppFromTypeString(typeString):
+    if typeString == "str":
+        return "string"
+    elif typeString == "int":
+        return "int"
+
+def cppFromArg(arg):
+    argType = cppFromTypeString(arg.annotation.id)
+    argName = arg.arg
+    return " ".join([argType, argName])
 
 def cppFromFuncdef(funcdef):
-    return ast.dump(funcdef)
+
+    returnType = cppFromTypeString(funcdef.returns.id)
+    name = funcdef.name
+    argList = (cppFromArg(arg) for arg in funcdef.args.args)
+
+    body = [cppFromA(elem) for elem in funcdef.body]
+
+    return returnType + " " + name + "(" + ', '.join(argList) + ")" + "{" + '\n'.join(body) + "}"
 
 def cppFromAssign(assign):
 
@@ -53,16 +86,10 @@ def cppFromModule(module):
     return '\n'.join(lines)
 
 def cppFromExpr(expr):
-
-    if isinstance(expr.value, ast.Call) and expr.value.func.id == 'print':
-        return cppFromPrint(expr.value.args)
-
-    return ast.dump(expr)
+    return cppFromA(expr.value)
 
 def cppFromPrint(args):
     return 'cout << ' + ' << '.join(cppFromA(a) for a in args) + ' <<< endl;'
 
-with open('test.py') as f:
-    tree = ast.parse(f.read())
-    # print(ast.dump(tree))
-    print(cppFromA(tree))
+tree = ast.parse(sys.stdin.read())
+print(cppFromA(tree))
